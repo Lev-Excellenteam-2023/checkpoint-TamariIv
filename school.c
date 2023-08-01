@@ -44,6 +44,9 @@ enum courses {
     Statistics = 9
 };
 
+
+Student* school[NUM_GRADES][NUM_CLASSES] = {0};
+
 // Function to create a new student node
 Student* createStudentNode(const char* firstName, const char* lastName, const char* phoneNumber, int grade, int class, int marks[]) {
     Student* newStudent = (Student*)malloc(sizeof(Student));
@@ -63,7 +66,7 @@ Student* createStudentNode(const char* firstName, const char* lastName, const ch
 
 
 // Function to add a student to the school
-void addStudent(Student* school[NUM_GRADES][NUM_CLASSES], Student* newStudent) {
+void addStudent(Student* newStudent) {
     if (school[newStudent->grade-1][newStudent->class-1] == NULL) {
         // If no student in class - add as first student
         school[newStudent->grade-1][newStudent->class-1] = newStudent;
@@ -77,7 +80,7 @@ void addStudent(Student* school[NUM_GRADES][NUM_CLASSES], Student* newStudent) {
 
 
 // Function to find a student by first name and last name in the school system
-Student* findStudent(Student* school[NUM_GRADES][NUM_CLASSES], const char* firstName, const char* lastName) {
+Student* findStudent(const char* firstName, const char* lastName) {
     for (int grade = 0; grade < NUM_GRADES; ++grade) {
         for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
             Student* currentStudent = school[grade][classNum];
@@ -95,7 +98,7 @@ Student* findStudent(Student* school[NUM_GRADES][NUM_CLASSES], const char* first
 
 
 // Function to delete a student from the school system
-void deleteStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void deleteStudent() {
     char firstName[50], lastName[50];
 
     printf("Enter the first name of the student to delete: ");
@@ -105,7 +108,7 @@ void deleteStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
     scanf("%49s", lastName);
 
     // Find the student in the school system
-    Student* targetStudent = findStudent(school, firstName, lastName);
+    Student* targetStudent = findStudent(firstName, lastName);
 
     if (targetStudent == NULL) {
         printf("Student not found.\n");
@@ -153,7 +156,7 @@ void deleteStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
 
 
 // Function to get new student details from the user and perform validation
-void addNewStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void addNewStudent() {
     char firstName[50], lastName[50], phoneNumber[15];
     int grade, classNum, marks[10];
 
@@ -186,14 +189,14 @@ void addNewStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
     if (newStudent == NULL) {
         printf("Error: Memory allocation failed.\n");
     } else {
-        addStudent(school, newStudent);
+        addStudent(newStudent);
     }
 }
 
 
 
 // Function to read students from a text file and add them to the school system
-void readStudentsFromFile(const char* filename, Student* school[NUM_GRADES][NUM_CLASSES]) {
+void readStudentsFromFile(const char* filename) {
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
         printf("Error: Unable to open the file '%s'\n", filename);
@@ -232,7 +235,7 @@ void readStudentsFromFile(const char* filename, Student* school[NUM_GRADES][NUM_
                 return;
             }
             else {
-                addStudent(school, newStudent);
+                addStudent(newStudent);
             }
         }
 
@@ -243,7 +246,7 @@ void readStudentsFromFile(const char* filename, Student* school[NUM_GRADES][NUM_
 
 
 // Function to print all the students in the school
-void printAllStudents(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void printAllStudents() {
     for (int grade = 0; grade < NUM_GRADES; ++grade) {
         for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
             Student* currentStudent = school[grade][classNum];
@@ -266,7 +269,7 @@ void printAllStudents(Student* school[NUM_GRADES][NUM_CLASSES]) {
 
 
 // Function to free the memory for each student node
-void freeStudents(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void freeStudents() {
     for (int grade = 0; grade < NUM_GRADES; ++grade) {
         for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
             Student* currentStudent = school[grade][classNum];
@@ -280,7 +283,7 @@ void freeStudents(Student* school[NUM_GRADES][NUM_CLASSES]) {
 }
 
 // Function to search for a student in the school system
-void searchStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void searchStudent() {
     char firstName[50], lastName[50];
 
     printf("Enter the first name of the student to search: ");
@@ -290,7 +293,7 @@ void searchStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
     scanf("%49s", lastName);
 
     // Find the student in the school system
-    Student* targetStudent = findStudent(school, firstName, lastName);
+    Student* targetStudent = findStudent(firstName, lastName);
 
     if (targetStudent == NULL) {
         printf("Student not found.\n");
@@ -308,7 +311,7 @@ void searchStudent(Student* school[NUM_GRADES][NUM_CLASSES]) {
     }
 }
 
-void menu(Student* school[NUM_GRADES][NUM_CLASSES]) {
+void menu() {
     char input;
     // school.name = "schoolName";
     do {
@@ -331,19 +334,19 @@ void menu(Student* school[NUM_GRADES][NUM_CLASSES]) {
         getc(stdin);
         switch (input) {
             case Insert:
-                addNewStudent(school);
+                addNewStudent();
                 break;
             case Delete:
-                deleteStudent(school);
+                deleteStudent();
                 break;
             case Edit:
                 //editStudentGrade();
                 break;
             case Search:
-                searchStudent(school);
+                searchStudent();
                 break;
             case Showall:
-                //printAllStudents();
+                printAllStudents();
                 break;
             case Top10:
                 //printTopNStudentsPerCourse();
@@ -372,15 +375,12 @@ void menu(Student* school[NUM_GRADES][NUM_CLASSES]) {
 
 
 int main() {
-    Student* school[NUM_GRADES][NUM_CLASSES] = {0};
-
     const char* filename = "students_with_class.txt";
-    readStudentsFromFile(filename, school);
+    readStudentsFromFile(filename);
 
-    // printAllStudents(school);
-    menu(school);
+    menu();
 
 
-    freeStudents(school);
+    freeStudents();
     return 0;
 }
