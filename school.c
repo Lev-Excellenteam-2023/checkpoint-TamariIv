@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
+#include <time.h>
+#include <ctype.h>
 
 #define NUM_GRADES 12
 #define NUM_CLASSES 10
+#define MIN_AVERAGE 60
 
 // Structure to represent a student
 typedef struct Student {
@@ -31,7 +33,7 @@ enum menu_inputs {
     Exit = '9'
 };
 
-enum courses {
+enum subjects {
     Biology = 0,
     Algebra = 1,
     Chemistry = 2,
@@ -44,8 +46,81 @@ enum courses {
     Statistics = 9
 };
 
+// Array to map subject numbers to subject names
+const char* subjectNames[] = {
+    "Biology",
+    "Algebra",
+    "Chemistry",
+    "Calculus",
+    "English",
+    "History",
+    "Physics",
+    "Grammar",
+    "Geography",
+    "Statistics"
+};
 
 Student* school[NUM_GRADES][NUM_CLASSES] = {0};
+
+/*
+ * The function gets input from the user and ensures the input
+ * doesn't exceed max_size. if yes - it will shrink it and will add \0.
+ * credit: Eitan Abraham
+ */
+size_t get_input(char* dst, size_t max_size) {
+    char* input = NULL;
+    size_t len = 0;
+    size_t len_size = 0;
+    len_size = getline(&input, &len, stdin);
+    if (len_size == -1)
+        return -1;
+    if (len_size < max_size) {
+        input[len_size - 1] = '\0';
+        strncpy(dst, input, len_size);
+    }
+    else {
+        input[max_size - 1] = '\0';
+        strncpy(dst, input, max_size);
+        len_size = max_size;
+    }
+    free(input);
+    return len_size;
+}
+
+
+bool isNumber(const char* str, int len) {
+    for (int i = 0; i < len-1; i++) {
+        if (!isdigit(str[i]))
+            return false;
+    }
+    return true;
+}
+
+int get_int_input() {
+    char intStr[10];
+    int getInt, len = 0;
+    bool isInt = false;
+    
+    len = get_input(intStr, 10);
+    if (intStr == NULL)
+        isInt = false;
+    else {
+        isInt = isNumber(intStr, len);
+    }
+
+    while (!isInt) {
+        printf("Expecting a number. Try again: ");
+        len = get_input(intStr, 10);
+        if (intStr == NULL)
+            isInt = false;
+        else {
+            isInt = isNumber(intStr, len);
+        }
+    }
+
+    getInt = atoi(intStr);
+    return getInt;
+}
 
 // Function to create a new student node
 Student* createStudentNode(const char* firstName, const char* lastName, const char* phoneNumber, int grade, int class, int marks[]) {
@@ -85,8 +160,7 @@ Student* findStudent(const char* firstName, const char* lastName) {
         for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
             Student* currentStudent = school[grade][classNum];
             while (currentStudent != NULL) {
-                if (strcmp(currentStudent->firstName, firstName) == 0 &&
-                    strcmp(currentStudent->lastName, lastName) == 0) {
+                if (strcmp(currentStudent->firstName, firstName) == 0 && strcmp(currentStudent->lastName, lastName) == 0) {
                     return currentStudent;
                 }
                 currentStudent = currentStudent->next;
@@ -101,11 +175,10 @@ Student* findStudent(const char* firstName, const char* lastName) {
 void deleteStudent() {
     char firstName[50], lastName[50];
 
-    printf("Enter the first name of the student to delete: ");
-    scanf("%49s", firstName);
-
-    printf("Enter the last name of the student to delete: ");
-    scanf("%49s", lastName);
+    printf("Enter the first name: ");
+    get_input(firstName, 50);
+    printf("Enter the last name: ");
+    get_input(lastName, 50);
 
     // Find the student in the school system
     Student* targetStudent = findStudent(firstName, lastName);
@@ -124,8 +197,11 @@ void deleteStudent() {
 
     // Ask the user to confirm the deletion
     printf("Do you want to delete this student? (y/n): ");
-    char confirm;
+    char confirm, c;
     scanf(" %c", &confirm);
+    c = getchar();
+    while (c != '\n') c = getchar();
+
 
     if (confirm == 'y' || confirm == 'Y') {
         // Delete the student
@@ -155,41 +231,86 @@ void deleteStudent() {
 }
 
 
+bool validMarks(const char* str) {
+    int count = 0;
+    char* strCopy = strdup(str); 
+    char* token = strtok(strCopy, " "); 
+
+    while (token != NULL) {
+        int mark = atoi(token);
+
+        // Check if the mark is within the valid range (0 to 100)
+        if (mark < 0 || mark > 100 || (strcmp(token, "0") && mark == 0)) {
+            free(strCopy); 
+            return false;
+        }
+
+        count++;
+        token = strtok(NULL, " ");
+    }
+
+    free(strCopy); 
+    return count == 10;
+}
+
+
 // Function to get new student details from the user and perform validation
 void addNewStudent() {
-    char firstName[50], lastName[50], phoneNumber[15];
+    char firstName[50], lastName[50], phoneNumber[15], gradeStr[10], classStr[10], marksStr[50];
     int grade, classNum, marks[10];
 
     printf("Enter the first name: ");
-    scanf("%49s", firstName);
+    get_input(firstName, 50);
     printf("Enter the last name: ");
-    scanf("%49s", lastName);
+    get_input(lastName, 50);
+    while (findStudent(firstName, lastName) != NULL) {
+        printf("Student already exists in school.\n");
+        printf("Enter the first name: ");
+        get_input(firstName, 50);
+        printf("Enter the last name: ");
+        get_input(lastName, 50);
+    }
     printf("Enter the phone number: ");
-    scanf("%14s", phoneNumber);
+    int len = get_input(phoneNumber, 15);
+    while (!isNumber(phoneNumber, len)) {
+        printf("Error: Expecting a phone number. Try again.\n");
+        len = get_input(phoneNumber, 15);
+    }
     printf("Enter the grade (1-12): ");
-    scanf("%d", &grade);
+    grade = get_int_input();
+    while (grade < 1 || grade > NUM_GRADES) {
+        printf("Error: Invalid grade number. Try again.\n");
+        grade = get_int_input();
+    }
     printf("Enter the class number (1-10): ");
-    scanf("%d", &classNum);
-
-    if (grade < 1 || grade > NUM_GRADES || classNum < 1 || classNum > NUM_CLASSES) {
-        printf("Error: Invalid grade or class number.\n");
-        return;
+    classNum = get_int_input();
+    while (classNum < 1 || classNum > NUM_CLASSES) {
+        printf("Error: Invalid class number. Try again.\n");
+        classNum = get_int_input();
     }
 
     printf("Enter the marks for 10 subjects (separated by spaces): ");
-    for (int i = 0; i < 10; ++i) {
-        scanf("%d", &marks[i]);
+    len = get_input(marksStr, 50);
+    while (!validMarks(marksStr)) {
+        printf("Error: Invalid marks list. Try again.\n");
+        len = get_input(marksStr, 50);
     }
-
-    // Clear the input buffer to consume any extra characters in the line
-    int c;
-    while ((c = getchar()) != EOF && c != '\n');
+    int count = 0;
+    char* strCopy = strdup(marksStr); 
+    char* token = strtok(strCopy, " "); 
+    while (token != NULL && count < 10) {
+        marks[count] = atoi(token);
+        count++;
+        token = strtok(NULL, " ");
+    }
+    free(strCopy); 
 
     Student* newStudent = createStudentNode(firstName, lastName, phoneNumber, grade, classNum, marks);
     if (newStudent == NULL) {
         printf("Error: Memory allocation failed.\n");
     } else {
         addStudent(newStudent);
+        printf("Student added successfully.\n");
     }
 }
 
@@ -287,10 +408,9 @@ void searchStudent() {
     char firstName[50], lastName[50];
 
     printf("Enter the first name of the student to search: ");
-    scanf("%49s", firstName);
-
+    get_input(firstName, 50);
     printf("Enter the last name of the student to search: ");
-    scanf("%49s", lastName);
+    get_input(lastName, 50);
 
     // Find the student in the school system
     Student* targetStudent = findStudent(firstName, lastName);
@@ -310,6 +430,244 @@ void searchStudent() {
         printf("\n");
     }
 }
+
+
+// Function to edit a student's grade in a certain subject
+void editStudentGrade() {
+    char firstName[50], lastName[50];
+
+    printf("Enter the first name of the student to edit: ");
+    get_input(firstName, 50);
+    printf("Enter the last name of the student to edit: ");
+    get_input(lastName, 50);
+
+    // Find the student in the school system
+    Student* targetStudent = findStudent(firstName, lastName);
+    if (targetStudent == NULL) {
+        printf("Student not found.\n");
+        return;
+    }
+
+    int subjectChoice;
+    printf("Select the subject to edit the grade:\n");
+    printf("[0] Biology\n");
+    printf("[1] Algebra\n");
+    printf("[2] Chemistry\n");
+    printf("[3] Calculus\n");
+    printf("[4] English\n");
+    printf("[5] History\n");
+    printf("[6] Physics\n");
+    printf("[7] Grammar\n");
+    printf("[8] Geography\n");
+    printf("[9] Statistics\n");
+    printf("Enter the subject number (0-9): ");
+    subjectChoice = get_int_input();
+
+    while (subjectChoice < 0 || subjectChoice > 9) {
+        printf("Invalid subject number.\n");
+        subjectChoice = get_int_input();
+    }
+
+    int newGrade;
+    printf("Enter the new grade for the selected subject: ");
+    newGrade = get_int_input();
+
+    while (newGrade < 0 || newGrade > 100) {
+        printf("Invalid grade. Grade should be between 0 and 100.\n");
+        newGrade = get_int_input();
+    }
+
+    // Update the grade for the selected subject
+    targetStudent->marks[subjectChoice] = newGrade;
+
+    printf("Grade updated successfully.\n");
+}
+
+// Function to get the top N students in a specific subject in a specific grade
+void printTopNStudentsPerCourse() {
+    int grade, subject, topN;
+
+    printf("Enter the grade (1 to 12): ");
+    grade = get_int_input();
+    while (grade < 1 || grade > NUM_GRADES) {
+        printf("Invalid grade.\n");
+        grade = get_int_input();
+    }
+
+    printf("Select the subject:\n");
+    printf("[0] Biology\n");
+    printf("[1] Algebra\n");
+    printf("[2] Chemistry\n");
+    printf("[3] Calculus\n");
+    printf("[4] English\n");
+    printf("[5] History\n");
+    printf("[6] Physics\n");
+    printf("[7] Grammar\n");
+    printf("[8] Geography\n");
+    printf("[9] Statistics\n");
+    printf("Enter the subject number (0-9): ");
+    subject = get_int_input();
+    while (subject < 0 || subject > 9) {
+        printf("Invalid subject number.\n");
+        subject = get_int_input();
+    }
+
+    printf("Enter the number of top students you want to view: ");
+    topN = get_int_input();
+    while (topN <= 0) {
+        printf("Invalid value for topN.\n");
+        topN = get_int_input();
+    }
+
+    Student* topStudents[topN];
+    for (int i = 0; i < topN; ++i) {
+        topStudents[i] = NULL;
+    }
+
+    for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
+        Student* currentStudent = school[grade - 1][classNum];
+        while (currentStudent != NULL) {
+            if (topStudents[topN - 1] == NULL || currentStudent->marks[subject] > topStudents[topN - 1]->marks[subject]) {
+                int j = topN - 2;
+                while (j >= 0 && (topStudents[j] == NULL || currentStudent->marks[subject] > topStudents[j]->marks[subject])) {
+                    topStudents[j + 1] = topStudents[j];
+                    j--;
+                }
+                topStudents[j + 1] = currentStudent;
+            }
+            currentStudent = currentStudent->next;
+        }
+    }
+
+    printf("Top %d students in %s for Grade %d:\n", topN, subjectNames[subject], grade);
+    for (int i = 0; i < topN && topStudents[i] != NULL; ++i) {
+        printf("%s %s (Mark: %d)\n", topStudents[i]->firstName, topStudents[i]->lastName, topStudents[i]->marks[subject]);
+    }
+}
+
+
+// Function to calculate the average of a grade per a certain subject
+void printAverage() {
+    int grade, subject;
+
+    printf("Enter the grade (1 to 12): ");
+    grade = get_int_input();
+    while (grade < 1 || grade > NUM_GRADES) {
+        printf("Invalid grade.\n");
+        grade = get_int_input();
+    }
+
+    printf("Select the subject:\n");
+    printf("[0] Biology\n");
+    printf("[1] Algebra\n");
+    printf("[2] Chemistry\n");
+    printf("[3] Calculus\n");
+    printf("[4] English\n");
+    printf("[5] History\n");
+    printf("[6] Physics\n");
+    printf("[7] Grammar\n");
+    printf("[8] Geography\n");
+    printf("[9] Statistics\n");
+    printf("Enter the subject number (0-9): ");
+    subject = get_int_input();
+    while (subject < 0 || subject > 9) {
+        printf("Invalid subject number.\n");
+        subject = get_int_input();
+    }
+
+    int totalMarks = 0;
+    int totalStudents = 0;
+
+    for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
+        Student* currentStudent = school[grade - 1][classNum];
+        while (currentStudent != NULL) {
+            totalMarks += currentStudent->marks[subject];
+            totalStudents++;
+            currentStudent = currentStudent->next;
+        }
+    }
+
+    if (totalStudents == 0) {
+        printf("No students found in Grade %d for %s.\n", grade, subjectNames[subject]);
+    } else {
+        float average = (float)totalMarks / totalStudents;
+        printf("Average marks in %s for Grade %d: %.2f\n", subjectNames[subject], grade, average);
+    }
+}
+
+
+// Function to print underperformed students (students whose average is below 55)
+void printUnderperformedStudents() {
+    int underperformedCount = 0;
+
+    for (int grade = 1; grade <= NUM_GRADES; ++grade) {
+        for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
+            Student* currentStudent = school[grade - 1][classNum];
+            while (currentStudent != NULL) {
+                float average = 0.0;
+                for (int i = 0; i < 10; ++i) {
+                    average += currentStudent->marks[i];
+                }
+                average /= 10;
+
+                if (average < MIN_AVERAGE) {
+                    underperformedCount++;
+                    printf("Underperformed Student:\n");
+                    printf("Name: %s %s\n", currentStudent->firstName, currentStudent->lastName);
+                    printf("Grade: %d\n", currentStudent->grade);
+                    printf("Class: %d\n", currentStudent->class);
+                    printf("Phone Number: %s\n", currentStudent->phoneNumber);
+                    printf("Average Marks: %.2f\n\n", average);
+                }
+
+                currentStudent = currentStudent->next;
+            }
+        }
+    }
+
+    if (underperformedCount == 0) {
+        printf("No underperformed students found.\n");
+    }
+}
+
+// Function to export the whole school (all students) into a file with a timestamp in the filename
+void exportDatabase() {
+    time_t now;
+    struct tm* timestamp;
+    char filename[100];
+
+    time(&now);
+    timestamp = localtime(&now);
+
+    strftime(filename, sizeof(filename), "school_data_%Y%m%d_%H%M%S.txt", timestamp);
+
+    FILE* file = fopen(filename, "w");
+    if (file == NULL) {
+        printf("Error: Unable to create the file '%s'\n", filename);
+        return;
+    }
+
+    for (int grade = 0; grade < NUM_GRADES; ++grade) {
+        for (int classNum = 0; classNum < NUM_CLASSES; ++classNum) {
+            Student* currentStudent = school[grade][classNum];
+            while (currentStudent != NULL) {
+                fprintf(file, "%s %s %s %d %d ", currentStudent->firstName, currentStudent->lastName,
+                        currentStudent->phoneNumber, currentStudent->grade, currentStudent->class);
+
+                for (int i = 0; i < 10; ++i) {
+                    fprintf(file, "%d ", currentStudent->marks[i]);
+                }
+
+                fprintf(file, "\n");
+                currentStudent = currentStudent->next;
+            }
+        }
+    }
+
+    fclose(file);
+    printf("School data exported to '%s' successfully.\n", filename);
+}
+
 
 void menu() {
     char input;
@@ -340,7 +698,7 @@ void menu() {
                 deleteStudent();
                 break;
             case Edit:
-                //editStudentGrade();
+                editStudentGrade();
                 break;
             case Search:
                 searchStudent();
@@ -349,19 +707,19 @@ void menu() {
                 printAllStudents();
                 break;
             case Top10:
-                //printTopNStudentsPerCourse();
+                printTopNStudentsPerCourse();
                 break;
             case UnderperformedStudents:
-                //printUnderperformedStudents();
+                printUnderperformedStudents();
                 break;
             case Average:
-                //printAverage();
+                printAverage();
                 break;
             case Export:
-                //exportDatabase();
+                exportDatabase();
                 break;
             case Exit:
-                //handleClosing();
+                freeStudents();
                 break;
             default:
                 printf("\nThere is no item with symbol \"%c\".Please enter a number between 1-10!\nPress any key to continue...",
@@ -381,6 +739,5 @@ int main() {
     menu();
 
 
-    freeStudents();
     return 0;
 }
